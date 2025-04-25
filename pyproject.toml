@@ -1,7 +1,71 @@
 [project]
-name = "model-code-analyzer"
+name = "code_qa_api"
 version = "0.1.0"
-description = "Add your description here"
+authors = [
+  { name="Eran Krakovsky", email="ekrako@gamil.com" },
+]
+description = "A REST API using RAG to answer questions about a local code repository."
 readme = "README.md"
-requires-python = ">=3.13"
-dependencies = []
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Framework :: FastAPI",
+]
+dependencies = [
+    "fastapi>=0.115.12",
+    "uvicorn[standard]>=0.34.2",
+    "litellm>=1.67.2",
+    "pydantic>=2.11.3",
+    "pydantic-settings>=2.9.1",
+    "python-dotenv>=1.1.0",
+    "sentence-transformers>=4.1.0", # For embeddings & evaluation
+    "faiss-cpu>=1.10.0", # For vector store (CPU version)
+    "numpy>=2.2.5", # Required by faiss
+    "pyyaml>=6.0.2", # For reading QA data
+    "gitpython>=3.1.44", # For cloning QA repo
+    "tenacity>=9.1.2", # For retries on API calls
+    "chromadb>=0.6.3",
+    "invoke>=2.2.0",
+]
+[build-system]
+requires = ["uv_build>=0.6.6,<0.7"]
+build-backend = "uv_build"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.5",
+    "pytest-asyncio>=0.24.0",
+    "httpx>=0.28.1",               # For API testing
+    "ruff>=0.6.7",                # Linter and formatter
+    "mypy>=1.13.1",
+    "types-PyYAML>=6.0.12.12",
+    "invoke",                  # Task runner
+]
+
+[project.urls]
+"Homepage" = "https://github.com/your_username/code_qa_api" # TODO: Replace with actual URL
+"Bug Tracker" = "https://github.com/your_username/code_qa_api/issues" # TODO: Replace
+
+
+[tool.ruff]
+line-length = 160
+
+[tool.ruff.lint]
+# Enable Pyflakes, pycodestyle, isort
+select = ["E", "F", "I"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true # Good practice to add specific ignores if possible
+disallow_untyped_defs = true
+check_untyped_defs = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
