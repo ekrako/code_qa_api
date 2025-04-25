@@ -16,6 +16,19 @@ _vector_store_instance = None
 
 @router.post("/answer", response_model=QAResponse)
 async def answer_question(request: QARequest, vector_store: Annotated[VectorStore, Depends(get_vector_store)]) -> QAResponse:
+    """Answers a user question based on retrieved context from the indexed codebase.
+
+    Args:
+        request: The request containing the question.
+        vector_store: The initialized vector store dependency.
+
+    Raises:
+        HTTPException: 400 if the vector store is not initialized.
+        HTTPException: 500 if there is an internal server error.
+
+    Returns:
+        The generated answer based on the question and context.
+    """
     if not vector_store.is_initialized():
         raise HTTPException(
             status_code=400,

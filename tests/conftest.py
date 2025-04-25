@@ -37,19 +37,9 @@ def top_level_function(x, y):
 def setup_test_environment():
     # Create test directories
     TEST_INDEX_PATH.mkdir(parents=True, exist_ok=True)
-
-    # Override settings for tests
-    original_index_path = settings.index_path
-    settings.index_path = TEST_INDEX_PATH
-
     yield  # Run tests
-
     # Teardown: remove test data
     shutil.rmtree(TEST_INDEX_PATH.parent)
-
-    # Restore original settings if necessary (though test run usually exits)
-    settings.index_path = original_index_path
-
 
 @pytest.fixture(scope="session")
 def event_loop():

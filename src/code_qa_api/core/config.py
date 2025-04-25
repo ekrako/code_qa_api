@@ -12,9 +12,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     # LLM Settings
-    # generation_model: str = "anthropic/claude-3-7-sonnet-20250219"
-    # chunk_explanation_model: str = "anthropic/claude-3-7-sonnet-20250219"
-    generation_model: str = "openai/gpt-4.1"
+    generation_model: str = "anthropic/claude-3-7-sonnet-20250219"
     chunk_explanation_model: str = "openai/gpt-4.1"
     embedding_model: str = "openai/text-embedding-3-small"
 
@@ -38,5 +36,3 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-# Ensure index directory exists
-settings.index_path.mkdir(parents=True, exist_ok=True)
