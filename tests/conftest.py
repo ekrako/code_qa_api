@@ -113,7 +113,3 @@ def mock_settings(test_repo_path: Path, monkeypatch) -> Generator[None, None, No
         monkeypatch.setattr(settings, "repo_path", test_repo_path)
 
         yield
-
-        # Teardown is handled by TemporaryDirectory context manager
-        # No need for manual rmtree
-        pass

@@ -42,4 +42,7 @@ async def answer_question(request: QARequest, vector_store: Annotated[VectorStor
     except Exception as e:
         print(f"Error answering question: {e}")
         # Consider logging the full traceback
-        raise HTTPException(status_code=500, detail="Internal server error during question answering.")
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error during question answering.",
+        ) from e

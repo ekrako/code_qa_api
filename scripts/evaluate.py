@@ -25,38 +25,44 @@ QA_REPO_URL = settings.qa_repo_url
 
 
 def load_qa_data(dir_path: Path) -> list | None:
-    """Loads QA pairs from .q.md and .a.md files in the specified directory. Clones the repo if not found."""
-    if not dir_path.is_dir():
-        print(f"QA directory not found at {dir_path}. Attempting to clone from {QA_REPO_URL}...")
-        try:
-            # Ensure parent directory exists
-            dir_path.parent.mkdir(parents=True, exist_ok=True)
-            # Clone the repository
-            result = subprocess.run(
-                ["git", "clone", QA_REPO_URL, str(dir_path)],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-            if result.returncode == 0:
-                print(f"Successfully cloned QA repository to {dir_path}.")
-            else:
-                print(f"Warning: Git clone completed with non-zero exit code: {result.returncode}")
-            # Check again if the directory exists after cloning
-            if not dir_path.is_dir():
-                 print(f"Error: Directory {dir_path} still not found after attempting clone.")
-                 return None
+    """Loads QA pairs from .q.md and .a.md files in the specified directory.
+    Clones the repo if the directory doesn't exist.
+    """
+    if not dir_path.is_dir() and not clone_qa_repo(dir_path):
+        return None
 
-        except subprocess.CalledProcessError as e:
-            print(f"Error cloning repository: {e}")
-            print(f"Stderr: {e.stderr}")
-            print("Please ensure Git is installed and you have permissions to clone.")
-            return None
-        except Exception as e:
-            print(f"An unexpected error occurred during cloning: {e}")
-            return None
+    return load_qa_pairs(dir_path)
 
 
+def clone_qa_repo(dir_path: Path) -> bool:
+    """Clones the QA repository to the specified directory."""
+    print(f"QA directory not found at {dir_path}. Attempting to clone from {QA_REPO_URL}...")
+    try:
+        dir_path.parent.mkdir(parents=True, exist_ok=True)
+        result = subprocess.run(
+            ["git", "clone", QA_REPO_URL, str(dir_path)],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0:
+            print(f"Successfully cloned QA repository to {dir_path}.")
+            return True
+        else:
+            print(f"Warning: Git clone completed with non-zero exit code: {result.returncode}")
+            return False
+    except subprocess.CalledProcessError as e:
+        print(f"Error cloning repository: {e}")
+        print(f"Stderr: {e.stderr}")
+        print("Please ensure Git is installed and you have permissions to clone.")
+        return False
+    except Exception as e:
+        print(f"An unexpected error occurred during cloning: {e}")
+        return False
+
+
+def load_qa_pairs(dir_path: Path) -> list | None:
+    """Loads QA pairs from .q.md and .a.md files in the specified directory."""
     qa_pairs = {}
     q_pattern = re.compile(r"(\d+)\.q\.md")
     a_pattern = re.compile(r"(\d+)\.a\.md")
@@ -68,27 +74,20 @@ def load_qa_data(dir_path: Path) -> list | None:
                 a_match = a_pattern.match(file_path.name)
 
                 if q_match:
-                    index = q_match.group(1)
-                    if index not in qa_pairs:
-                        qa_pairs[index] = {}
+                    index = q_match[1]
                     with open(file_path, "r", encoding="utf-8") as f:
-                        qa_pairs[index]["question"] = f.read().strip()
+                        qa_pairs.setdefault(index, {})["question"] = f.read().strip()
                 elif a_match:
-                    index = a_match.group(1)
-                    if index not in qa_pairs:
-                        qa_pairs[index] = {}
+                    index = a_match[1]
                     with open(file_path, "r", encoding="utf-8") as f:
-                        qa_pairs[index]["answer"] = f.read().strip()
+                        qa_pairs.setdefault(index, {})["answer"] = f.read().strip()
 
-        # Convert to list and validate
         qa_data = []
         for index, pair in sorted(qa_pairs.items()):
             if "question" in pair and "answer" in pair:
-                qa_data.append({"question": pair["question"], "answer": pair["answer"]})
+                qa_data.append(pair)
             else:
-                print(
-                    f"Warning: Missing question or answer for index {index} in {dir_path}"
-                )
+                print(f"Warning: Missing question or answer for index {index} in {dir_path}")
 
         if not qa_data:
             print(f"Error: No valid QA pairs found in {dir_path}.")
@@ -196,11 +195,14 @@ async def run_evaluation():
 if __name__ == "__main__":
     # Check if API is likely running
     try:
-        response = httpx.get(settings.api_base_url + "/docs", timeout=5.0)
+        response = httpx.get(f"{settings.api_base_url}/docs", timeout=5.0)
         if response.status_code != 200:
-            print(
-                f"Warning: API server at {settings.api_base_url} might not be running or /docs is unavailable (Status: {response.status_code}). Proceeding anyway."
+            message = (
+                f"Warning: API server at {settings.api_base_url} might not be "
+                f"running or /docs is unavailable (Status: {response.status_code}). "
+                f"Proceeding anyway."
             )
+            print(message)
     except httpx.RequestError as e:
         print(
             f"Error: Could not connect to API server at {settings.api_base_url}. Please ensure it's running before evaluation."

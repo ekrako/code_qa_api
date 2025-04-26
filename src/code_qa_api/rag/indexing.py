@@ -60,20 +60,19 @@ async def index_repository(
 
     # 2. Process chunks in batches (embedding + metadata preparation)
     total_chunks_processed = 0
-    if all_chunks:
-        for i in range(0, len(all_chunks), batch_size):
-            batch_chunks = all_chunks[i : i + batch_size]
-            print(f"Processing batch {i // batch_size + 1} of {len(all_chunks) // batch_size + 1} with {len(batch_chunks)} chunks...")
-            try:
-                embeddings, metadata = await process_chunks_for_embedding(batch_chunks)
-                if embeddings.size > 0:
-                    vector_store.add(embeddings, metadata)
-                    total_chunks_processed += len(metadata)
-                else:
-                    print(f"Warning: Batch {i // batch_size + 1} resulted in no embeddings.")
-            except Exception as e:
-                print(f"Error processing batch {i // batch_size + 1}: {e}. Skipping batch.")
-                # Potentially add more robust error handling/retry for batches
+    for i in range(0, len(all_chunks), batch_size):
+        batch_chunks = all_chunks[i : i + batch_size]
+        print(f"Processing batch {i // batch_size + 1} of {len(all_chunks) // batch_size + 1} with {len(batch_chunks)} chunks...")
+        try:
+            embeddings, metadata = await process_chunks_for_embedding(batch_chunks)
+            if embeddings.size > 0:
+                vector_store.add(embeddings, metadata)
+                total_chunks_processed += len(metadata)
+            else:
+                print(f"Warning: Batch {i // batch_size + 1} resulted in no embeddings.")
+        except Exception as e:
+            print(f"Error processing batch {i // batch_size + 1}: {e}. Skipping batch.")
+            # Potentially add more robust error handling/retry for batches
 
     # 3. Finalize
     end_time = time.time()

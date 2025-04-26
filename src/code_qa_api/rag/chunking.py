@@ -20,8 +20,11 @@ class PythonCodeChunker:
         # Use tokenize to get more accurate end line for multi-line statements
         # ast node end_lineno might not be precise enough for complex statements
         try:
-            tokens = list(tokenize.generate_tokens(io.StringIO("\n".join(lines[start_line:end_line])).readline))
-            if tokens:
+            if tokens := list(
+                tokenize.generate_tokens(
+                    io.StringIO("\n".join(lines[start_line:end_line])).readline
+                )
+            ):
                 # Sometimes end_lineno points *after* the last line of the node
                 # Find the actual last token's end line
                 actual_end_line = max(t.end[0] for t in tokens)
@@ -33,8 +36,7 @@ class PythonCodeChunker:
             # Handle case where start_line might be out of bounds temporarily
             pass
 
-        content = "\n".join(lines[start_line:end_line])
-        return content
+        return "\n".join(lines[start_line:end_line])
 
     def chunk_file(self, file_path: Path) -> list[dict[str, Any]]:
         content = read_file_content(file_path)
@@ -171,15 +173,15 @@ class MarkdownChunker:
             chunks.append(
                 {
                     "chunk_id": current_chunk_id,
-                    "file_path": str(file_path),
-                    "start_line": start_index + 1,  # 1-based line number
-                    "end_line": content_end_index,  # End line corresponds to content boundary
+                    "file_path": file_path,
+                    "start_line": start_index + 1,
+                    "end_line": content_end_index,
                     "content": current_chunk_content,
                     "type": "MarkdownHeaderChunk",
                     "name": start_header_text,
                     "header": start_header_text,
                     "level": start_header_level,
-                    "parent_chunk_id": parent_chunk_id,  # Link to parent
+                    "parent_chunk_id": parent_chunk_id,
                 }
             )
 
@@ -209,13 +211,12 @@ class MarkdownChunker:
 
             is_header, _, level = self._is_md_header(line)
             if is_header and level <= self.max_header_depth:
-                section_chunks = self._process_section(
+                if section_chunks := self._process_section(
                     str(file_path),
                     lines,
                     i,
                     parent_chunk_id=None,  # Top-level sections have no parent ID
-                )
-                if section_chunks:
+                ):
                     all_chunks.extend(section_chunks)
                     # Update processed_until based on the end of the last chunk from this section
                     # Need to find the max end_line across all chunks originating from this top-level header

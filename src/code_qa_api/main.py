@@ -33,11 +33,10 @@ async def custom_swagger_ui_html(req: Request) -> HTMLResponse:
     root_path = req.scope.get("root_path", "").rstrip("/")
     openapi_url = root_path + app.openapi_url
     return get_swagger_ui_html(
-        openapi_url=openapi_url,
-        title=app.title + " - Swagger UI",
+        openapi_url=openapi_url, title=f"{app.title} - Swagger UI"
     )
 
-@app.get(app.openapi_url if app.openapi_url else "/openapi.json", include_in_schema=False)
+@app.get(app.openapi_url or "/openapi.json", include_in_schema=False)
 async def get_open_api_endpoint() -> JSONResponse:
     return JSONResponse(
         get_openapi(
