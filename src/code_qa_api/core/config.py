@@ -31,8 +31,9 @@ class Settings(BaseSettings):
     project_name: str = "Code QA API"
     project_version: str = "0.1.0"
     vector_store_path: Path = Path("./data/chroma_db")
-    # Add other settings as needed
+
+    max_concurrent_requests: int = 2
+    max_request_timeout: float | None = 300.0
 
 
 settings = Settings()
-

@@ -41,6 +41,7 @@ def setup_test_environment():
     # Teardown: remove test data
     shutil.rmtree(TEST_INDEX_PATH.parent)
 
+
 @pytest.fixture(scope="session")
 def event_loop():
     # Override default pytest-asyncio event loop to match FastAPI's needs if necessary

@@ -1,26 +1,24 @@
 import asyncio
-import re  # Import re for pattern matching
-import subprocess  # Import subprocess to run git clone
+import re
+import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from typing import Callable
 
 import httpx
 from sentence_transformers import SentenceTransformer, util
 
 from code_qa_api.core.config import settings  # Load settings like API base URL and QA path
 
-# Add src directory to Python path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 QA_FILE_PATH = settings.qa_data_path
 API_URL = f"{settings.api_base_url}/api/answer"
 
-# Load a sentence transformer model for semantic similarity
-# Using a smaller model for efficiency in evaluation
 similarity_model = SentenceTransformer("all-MiniLM-L6-v2")
 
-# Define the repository URL
 QA_REPO_URL = settings.qa_repo_url
 
 
@@ -91,33 +89,47 @@ def load_qa_pairs(dir_path: Path) -> list | None:
 
         if not qa_data:
             print(f"Error: No valid QA pairs found in {dir_path}.")
-            return None
+            return []
 
         return qa_data
 
     except Exception as e:
         print(f"Error reading files from QA directory {dir_path}: {e}")
-        return None
+        return []
 
+async def _create_worker(
+    queue: asyncio.Queue,
+    client: httpx.AsyncClient,
+    result_updater: Callable[[str, str, str], None],
+) -> None:
+    executor = ThreadPoolExecutor()
 
-async def get_answer_from_api(question: str, client: httpx.AsyncClient) -> str | None:
-    try:
-        response = await client.post(
-            API_URL, json={"question": question}, timeout=120.0
-        )
-        response.raise_for_status()  # Raise exception for 4xx or 5xx errors
-        return response.json().get("answer")
-    except httpx.RequestError as exc:
-        print(f"An error occurred while requesting {exc.request.url!r}: {exc}")
-    except httpx.HTTPStatusError as exc:
-        print(
-            f"Error response {exc.response.status_code} while"
-            f" requesting {exc.request.url!r}: {exc.response.text}"
-        )
-    except Exception as e:
-        print(f"An unexpected error occurred calling the API: {e}")
-    return None
-
+    while True:
+        try:
+            question, reference_answer, i, total = await asyncio.wait_for(queue.get(), timeout=3)
+            if question is None:
+                break
+            print(f"\nProcessing question {i}/{total}: {question}")
+            timeout = httpx.Timeout(settings.max_request_timeout, pool=None, read=None, connect=None)
+            response = await client.post(
+                API_URL, json={"question": question}, timeout=timeout
+            )
+            response.raise_for_status()  # Raise exception for 4xx or 5xx errors
+            result_updater(question, reference_answer, response.json().get("answer"))
+        except httpx.RequestError as exc:
+            print(f"An error occurred while requesting {exc.request.url!r}: {exc}")
+        except httpx.HTTPStatusError as exc:
+            print(
+                f"Error response {exc.response.status_code} while"
+                f" requesting {exc.request.url!r}: {exc.response.text}"
+            )
+        except Exception as e:
+            print(f"An unexpected error occurred calling the API: {e}")
+        except asyncio.CancelledError:
+            break
+        finally:
+            queue.task_done()  # Update processing is complete
+    executor.shutdown(wait=False)
 
 def calculate_similarity(answer: str, reference: str) -> float:
     emb1 = similarity_model.encode(answer, convert_to_tensor=True)
@@ -135,50 +147,65 @@ async def run_evaluation():
     print(f"Loaded {len(qa_data)} question/answer pairs.")
     scores = []
     results = []
-
+    def result_updater(question: str, reference_answer: str, generated_answer: str):
+        if generated_answer:
+            similarity_score = calculate_similarity(
+                generated_answer, reference_answer
+            )
+            scores.append(similarity_score)
+            print(
+                f"  Reference Answer: {reference_answer[:100]}..."
+                if len(reference_answer) > 100
+                else reference_answer
+            )
+            print(
+                f"  Generated Answer: {generated_answer[:100]}..."
+                if len(generated_answer) > 100
+                else generated_answer
+            )
+            print(f"  Similarity Score: {similarity_score:.4f}")
+            results.append(
+                {
+                    "question": question,
+                    "reference": reference_answer,
+                    "generated": generated_answer,
+                    "score": similarity_score,
+                }
+            )
+        else:
+            print("  Failed to get answer from API.")
+            scores.append(0.0)  # Assign 0 score if API fails
+            results.append(
+                {
+                    "question": question,
+                    "reference": reference_answer,
+                    "generated": None,
+                    "score": 0.0,
+                }
+            )
     async with httpx.AsyncClient() as client:
-        for i, item in enumerate(qa_data):
-            question = item["question"]
-            reference_answer = item["answer"]
-            print(f"\nProcessing question {i+1}/{len(qa_data)}: {question}")
+        queue = asyncio.Queue(settings.max_concurrent_requests)
+        workers = [
+        asyncio.create_task(
+                _create_worker(
+                    queue=queue,
+                    client=client,
+                    result_updater=result_updater
+                )
+            )
+            for _ in range(settings.max_concurrent_requests)
+        ]
+        try:
+            for i, item in enumerate(qa_data,start=1):
+                question = item["question"]
+                reference_answer = item["answer"]
+                await queue.put((question,reference_answer,i,len(qa_data)))
+            await queue.join()
+        finally:
+            for work in workers:
+                work.cancel()
+        await asyncio.gather(*workers, return_exceptions=True)
 
-            generated_answer = await get_answer_from_api(question, client)
-
-            if generated_answer:
-                similarity_score = calculate_similarity(
-                    generated_answer, reference_answer
-                )
-                scores.append(similarity_score)
-                print(
-                    f"  Reference Answer: {reference_answer[:100]}..."
-                    if len(reference_answer) > 100
-                    else reference_answer
-                )
-                print(
-                    f"  Generated Answer: {generated_answer[:100]}..."
-                    if len(generated_answer) > 100
-                    else generated_answer
-                )
-                print(f"  Similarity Score: {similarity_score:.4f}")
-                results.append(
-                    {
-                        "question": question,
-                        "reference": reference_answer,
-                        "generated": generated_answer,
-                        "score": similarity_score,
-                    }
-                )
-            else:
-                print("  Failed to get answer from API.")
-                scores.append(0.0)  # Assign 0 score if API fails
-                results.append(
-                    {
-                        "question": question,
-                        "reference": reference_answer,
-                        "generated": None,
-                        "score": 0.0,
-                    }
-                )
 
     if scores:
         average_score = sum(scores) / len(scores)
@@ -186,10 +213,6 @@ async def run_evaluation():
         print(f"Average Semantic Similarity Score: {average_score:.4f}")
     else:
         print("\nEvaluation could not be completed (no scores calculated).")
-
-    # Optional: Save detailed results to a file
-    # with open("evaluation_results.json", "w") as f:
-    #     json.dump(results, f, indent=2)
 
 
 if __name__ == "__main__":

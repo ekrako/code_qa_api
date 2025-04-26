@@ -92,7 +92,7 @@ def python_chunker_min_1() -> PythonCodeChunker:
 
 @pytest.fixture
 def python_chunker_default() -> PythonCodeChunker:
-    return PythonCodeChunker() # Uses default min_chunk_lines
+    return PythonCodeChunker()  # Uses default min_chunk_lines
 
 
 # Helper for Python chunk tests
@@ -163,7 +163,7 @@ def test_python_chunking_decorators(python_chunker_min_1: PythonCodeChunker, tmp
     assert len(chunks) == 5
 
     decorator_func = next(c for c in chunks if c["name"] == "my_decorator")
-    wrapper_func = next(c for c in chunks if c["name"] == "wrapper") # Nested inside my_decorator
+    wrapper_func = next(c for c in chunks if c["name"] == "wrapper")  # Nested inside my_decorator
     decorated_plain_func = next(c for c in chunks if c["name"] == "say_whee")
     decorated_class = next(c for c in chunks if c["name"] == "DecoratedClass")
     decorated_method = next(c for c in chunks if c["name"] == "decorated_method")
@@ -273,7 +273,7 @@ def md_chunker() -> MarkdownChunker:
 
 # Helper for Markdown chunk tests
 def _verify_markdown_chunk(chunk, start_line, end_line, expected_content_part, header, level, parent_id=None):
-    assert header in chunk["content"] # Header should be part of the content
+    assert header in chunk["content"]  # Header should be part of the content
     assert expected_content_part in chunk["content"]
     assert chunk["start_line"] == start_line
     # Unlike Python chunker, end_line here should be more predictable
@@ -338,10 +338,10 @@ def test_markdown_chunking_max_depth(tmp_path: Path) -> None:
     h2 = next(c for c in chunks if c["header"] == "Header 2")
 
     # H1 content includes H1.1, H1.1.1, H1.2 text as they are below max depth
-    _verify_markdown_chunk(h1, 1, 23, "## Header 1.1", "Header 1", 1) # Check content includes sub-headers
+    _verify_markdown_chunk(h1, 1, 23, "## Header 1.1", "Header 1", 1)  # Check content includes sub-headers
     assert "### Header 1.1.1" in h1["content"]
     assert "## Header 1.2" in h1["content"]
-    assert "# Header 2" not in h1["content"] # Stops before next H1
+    assert "# Header 2" not in h1["content"]  # Stops before next H1
 
     # H2 content includes the rest
     _verify_markdown_chunk(h2, 24, 28, "Content under H2.", "Header 2", 1)
@@ -370,6 +370,7 @@ def test_markdown_chunking_only_header(md_chunker: MarkdownChunker, tmp_path: Pa
     # Chunk requires content *after* the header line itself
     assert len(chunks) == 0
 
+
 def test_markdown_code_block_header_like(md_chunker: MarkdownChunker, tmp_path: Path) -> None:
     content = """
 # Real Header
@@ -390,4 +391,4 @@ More text after code block.
     assert len(chunks) == 1
     chunk = chunks[0]
     _verify_markdown_chunk(chunk, 1, 10, "# Not a real header", "Real Header", 1)
-    assert "More text after code block." in chunk["content"] 
+    assert "More text after code block." in chunk["content"]

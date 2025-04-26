@@ -4,7 +4,7 @@ from invoke import task
 @task
 def start(c):
     """Start the FastAPI server using uvicorn."""
-    command = "uvicorn code_qa_api.main:app --reload"
+    command = "uvicorn code_qa_api.main:app --host 0.0.0.0 --port 8000"
     print(f"Running: {command}")
     c.run(command, pty=True)
 
@@ -34,7 +34,7 @@ def format(c):
 @task
 def test(c):
     """Run tests using pytest."""
-    command = "pytest -v"
+    command = "pytest -v --disable-warnings"
     print(f"Running: {command}")
     c.run(command, pty=True) 
 

@@ -20,11 +20,7 @@ class PythonCodeChunker:
         # Use tokenize to get more accurate end line for multi-line statements
         # ast node end_lineno might not be precise enough for complex statements
         try:
-            if tokens := list(
-                tokenize.generate_tokens(
-                    io.StringIO("\n".join(lines[start_line:end_line])).readline
-                )
-            ):
+            if tokens := list(tokenize.generate_tokens(io.StringIO("\n".join(lines[start_line:end_line])).readline)):
                 # Sometimes end_lineno points *after* the last line of the node
                 # Find the actual last token's end line
                 actual_end_line = max(t.end[0] for t in tokens)

@@ -45,6 +45,7 @@ dev = [
     "ruff>=0.6.7",                # Linter and formatter
     "mypy>=1.13.1",
     "types-PyYAML>=6.0.12.12",
+    "pytest-mock>=3.14.0",
     "invoke",                  # Task runner
 ]
 
@@ -70,3 +71,7 @@ check_untyped_defs = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+
+[dependency-groups]
+dev = [
+]

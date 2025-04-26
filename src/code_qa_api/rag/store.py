@@ -77,8 +77,7 @@ class VectorStore:
             metadatas_to_add = metadatas
 
         if not ids_to_add:
-            # print("No new items to add.") # Optional: log if nothing new
-            return  # Nothing to add
+            return
 
         # Ignore type error: Assume runtime data conforms to ChromaDB's expected PrimitiveData
         self._collection.add(embeddings=embeddings_to_add, metadatas=metadatas_to_add, ids=ids_to_add)  # type: ignore[arg-type]
@@ -100,24 +99,14 @@ class VectorStore:
         results = self._collection.query(
             query_embeddings=query_embeddings_list,
             n_results=k,
-            include=["metadatas"],  # Only need metadata for the result format
+            include=["metadatas"],  # type: ignore[list-item]
         )
 
-        # Extract metadatas from the results
-        # Results format: {'ids': [[..]], 'embeddings': None, 'documents': None,
-        # 'metadatas': [[..]], 'distances': [[..]]}
-        # We are interested in the first list of metadatas as we query
-        # with one embedding
         metadatas_result = results.get("metadatas")
-        # Ensure metadatas_result is not None and has at least one list
-        if metadatas_result and len(metadatas_result) > 0:
-            # Mypy struggles with complex optional nested lists from get
-            metadatas = metadatas_result[0]  # type: ignore[index]
-            # The type of metadatas here is list[Optional[Mapping[str, PrimitiveData]]]
-            # which matches the return type hint.
-            return metadatas if metadatas is not None else []  # type: ignore[return-value]
-        else:
-            return []  # Return empty list if metadatas is None or empty
+        if not metadatas_result or len(metadatas_result) <= 0:
+            return []
+        metadatas = metadatas_result[0]  # type: ignore[index]
+        return metadatas if metadatas is not None else []  # type: ignore[return-value]
 
     def reset(self) -> None:
         try:
@@ -137,12 +126,7 @@ class VectorStore:
                 print(f"Failed to ensure collection '{self.collection_name}' exists after reset attempt: {create_e}")
 
     def is_initialized(self) -> bool:
-        # Check if the collection exists and has items
         try:
-            # Check if collection exists by trying to get it (raises exception if not)
-            # self._client.get_collection(name=self.collection_name) # Alternative check
-            # A more direct check is the count
             return self._collection.count() > 0
         except Exception:
-            # If get_collection throws or count fails, assume not initialized properly
             return False

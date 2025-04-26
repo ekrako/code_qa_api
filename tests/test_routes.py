@@ -8,6 +8,7 @@ from code_qa_api.rag.store import VectorStore
 
 API_PREFIX = "/api"
 
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "question, expected_answer_substring",
@@ -22,9 +23,7 @@ API_PREFIX = "/api"
     ],
     ids=["meaning_of_life", "how_to_test"],
 )
-async def test_answer_question_happy_path(
-    vector_store: VectorStore, question: str, expected_answer_substring: str, monkeypatch
-):
+async def test_answer_question_happy_path(vector_store: VectorStore, question: str, expected_answer_substring: str, monkeypatch):
     # Arrange
     # Create client inside test function
     client = TestClient(app)
@@ -103,4 +102,3 @@ async def test_answer_question_internal_server_error(vector_store: VectorStore, 
 
     # Clean up override
     app.dependency_overrides.pop(get_vector_store, None)
-

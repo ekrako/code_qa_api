@@ -12,11 +12,11 @@ app = FastAPI(
     title=settings.project_name,
     version=settings.project_version,
     openapi_url=f"{settings.api_prefix}/openapi.json",
-    docs_url=None, 
+    docs_url=None,
     redoc_url=None,
-    lifespan=lifespan, 
+    lifespan=lifespan,
 )
-mcp = FastApiMCP(app) 
+mcp = FastApiMCP(app)
 mcp.mount()
 app.include_router(api_router, prefix=settings.api_prefix)
 mcp.setup_server()
@@ -32,9 +32,8 @@ async def root() -> RedirectResponse:
 async def custom_swagger_ui_html(req: Request) -> HTMLResponse:
     root_path = req.scope.get("root_path", "").rstrip("/")
     openapi_url = root_path + app.openapi_url
-    return get_swagger_ui_html(
-        openapi_url=openapi_url, title=f"{app.title} - Swagger UI"
-    )
+    return get_swagger_ui_html(openapi_url=openapi_url, title=f"{app.title} - Swagger UI")
+
 
 @app.get(app.openapi_url or "/openapi.json", include_in_schema=False)
 async def get_open_api_endpoint() -> JSONResponse:
